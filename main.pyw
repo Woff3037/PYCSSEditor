@@ -3,11 +3,11 @@ from pathlib import Path
 import sys
 import random
 import shutil
-from PySide2.QtCore import QFile
-from PySide2.QtGui import QColor
-from PySide2.QtWidgets import QApplication, QMainWindow
-from PySide2.QtGui import QTextCursor
-from PySide2.QtUiTools import QUiLoader
+from PyQt5.QtCore import QFile
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtGui import QTextCursor
+from PyQt5.uic import loadUi
 
 def explorer_start():
     os.system("explorer.exe")
@@ -30,16 +30,15 @@ class MyWidget(QMainWindow):
     css_files = {}
     filepath = ""
     filename = ""
-    stylesheet = f"background-color: {QColor(redBG, greenBG, blueBG).name()}\n" \
+    stylesheet = f"background-color: {QColor(redBG, greenBG, blueBG).name()};\n" \
                  f"color: {QColor(redFG, greenFG, blueFG).name()}"
 
     def load_ui(self):
-        loader = QUiLoader()
-        path = os.fspath(Path(__file__).resolve().parent / "form.ui")
+        path = os.path.join(os.path.dirname(__file__), "form.ui")
         ui_file = QFile(path)
         ui_file.open(QFile.ReadOnly)
-        self.ui = loader.load(ui_file)  # Assign the loaded UI to a member variable
-        self.setCentralWidget(self.ui)  # Set the loaded UI as the central widget
+        self.ui = loadUi(ui_file, self)  # Load the UI file
+        ui_file.close()
 
         self.ui.RedSlider_2.valueChanged.connect(self.assign_red_bg)
         self.ui.GreenSlider_2.valueChanged.connect(self.assign_green_bg)
@@ -58,7 +57,6 @@ class MyWidget(QMainWindow):
         self.ui.pushButton_6.clicked.connect(self.merge_css_files)
         self.ui.pushButton_7.clicked.connect(self.folder_delete)
         self.ui.comboBox.currentIndexChanged.connect(self.display_file_contents)
-        ui_file.close()
 
     def folder_delete(self):
         shutil.rmtree(self.filename)
@@ -141,11 +139,6 @@ class MyWidget(QMainWindow):
                           f"color: {QColor(self.redFG, self.greenFG, self.blueFG).name()}"
 
     def assign_color(self):
-        # if self.ui.label_5.styleSheet() == "" or self.ui.label_5.styleSheet() is None:
-        #    stylesheet = self.ui.label_5.styleSheet()
-        #    self.ui.label_5.setStyleSheet(
-        #        f"{stylesheet}\n
-        # else:
         self.style_sheet_refresh()
         self.ui.label_5.setStyleSheet(self.stylesheet)
 
@@ -166,7 +159,6 @@ class MyWidget(QMainWindow):
 
     def populate_dropdown(self):
         file_names = os.listdir(self.filename)
-        # Add the file names to the dropdown
         self.ui.comboBox.addItems(file_names)
 
     def file_save(self):
@@ -176,40 +168,30 @@ class MyWidget(QMainWindow):
     def display_file_contents(self, index):
         selected_file = self.ui.comboBox.itemText(index)
         if selected_file:
-            self.filepath = os.path.join(self.filename, selected_file)  # Specify the directory path here
+            self.filepath = os.path.join(self.filename, selected_file)
             with open(self.filepath, 'r') as file:
                 file_content = file.read()
                 self.ui.textEdit.setPlainText(file_content)
                 self.ui.textEdit.moveCursor(QTextCursor.Start)  # Scroll to the top of the text
 
     def merge_css_files(self):
-        # Get a list of all split CSS files in the directory
         css_files = [file for file in os.listdir(self.filename) if file.endswith('.css')]
-
-        # Sort the file names in ascending order
         css_files.sort()
         file_name = self.given_file_path2
-        # Create or overwrite the output file
         with open(file_name, 'w') as output_file:
             for css_file in css_files:
-                # Read the content of each split CSS file
                 with open(os.path.join(self.filename, css_file), 'r') as input_file:
                     css_content = input_file.read()
-
-                # Write the content to the output file
                 output_file.write(css_content)
-                self.folder_delete()
+            self.folder_delete()
 
     def split_css_blocks(self, file_path):
         self.given_file_path2 = file_path
-        # Read the CSS file
         with open(file_path, 'r') as file:
             css_content = file.read()
 
-        # Split CSS content into blocks
         css_blocks = css_content.split('}')
 
-        # Create a directory to store the split CSS files
         is_it_exist = True
         output_directory = ""
         while is_it_exist:
@@ -224,23 +206,17 @@ class MyWidget(QMainWindow):
         self.filename = output_directory
         os.makedirs(output_directory, exist_ok=True)
 
-        # Write each block into a separate CSS file
         for i, block in enumerate(css_blocks):
-            # Remove any leading/trailing whitespace and ignore empty blocks
             block = block.strip()
             if block:
-                # Create a file name based on the block index
                 file_name = f'block_{i}.css'
                 output_file = os.path.join(output_directory, file_name)
-
-                # Write the block content into the separate CSS file
                 with open(output_file, 'w') as output:
                     output.write(block + '}')
-
                 print(f'Split block {i} saved as {file_name}')
 
 if __name__ == "__main__":
-    app = QApplication([])
+    app = QApplication(sys.argv)
     my_widget = MyWidget()
     my_widget.setMinimumSize(800, 600)
     my_widget.show()
